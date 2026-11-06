@@ -1,0 +1,63 @@
+name: Atualizar dados públicos
+
+on:
+  schedule:
+    - cron: '30 9 * * *'   # 06:30 em Brasília — a CVM publica o cadastro de madrugada
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # só para o commit de "manter vivo" (abaixo)
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Baixar CVM e Tesouro Transparente
+        run: |
+          set -euo pipefail
+          mkdir -p entrada
+          curl -fsSL --retry 3 --max-time 300 -o entrada/registro.zip \
+            https://dados.cvm.gov.br/dados/FI/CAD/DADOS/registro_fundo_classe.zip
+          unzip -o -q entrada/registro.zip registro_classe.csv -d entrada
+          curl -fsSL --retry 3 --max-time 300 -o entrada/PrecoTaxaTesouroDireto.csv \
+            "https://www.tesourotransparente.gov.br/ckan/dataset/df56aa42-484a-4a59-8184-7676580c81e3/resource/796d2059-14e9-44e3-80c9-2d9e30b405c1/download/PrecoTaxaTesouroDireto.csv"
+          ls -la entrada
+
+      - name: Gerar arquivos
+        run: node scripts/gerar.mjs entrada publicar
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: publicar
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+      # O GitHub desliga agendamentos de repositório público sem commit há 60 dias.
+      # Um commit vazio a cada ~50 dias mantém o job diário vivo.
+      - name: Manter o agendamento vivo
+        run: |
+          ultimo=$(git log -1 --format=%ct)
+          if [ $(( $(date +%s) - ultimo )) -gt $(( 50 * 86400 )) ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "manter agendamento ativo"
+            git push
+          fi
