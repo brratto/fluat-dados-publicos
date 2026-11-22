@@ -3,7 +3,7 @@
 //   entrada: registro_classe.csv (de registro_fundo_classe.zip, CVM) e PrecoTaxaTesouroDireto.csv
 //   saída:   fundos/indice.json, tesouro/titulos.json, tesouro/taxas/<titulo>.json, meta.json
 // Sem dependências. Só dados públicos entram aqui — nada do usuário.
-import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const [entrada, saida] = process.argv.slice(2);
@@ -45,7 +45,16 @@ const geradoEm = new Date().toISOString();
 }
 
 // ---------- Tesouro Direto (Tesouro Transparente) ----------
-{
+// Sem o CSV (o Tesouro Transparente recusou a conexão), reaproveita o que já está publicado.
+const SITE = 'https://brratto.github.io/fluat-dados-publicos/';
+if (!existsSync(join(entrada, 'PrecoTaxaTesouroDireto.csv'))) {
+  const pegar = async arq => { const r = await fetch(SITE + arq, { signal: AbortSignal.timeout(60000) }); if (!r.ok) falha(`sem o CSV do Tesouro e ${arq} não veio do site (HTTP ${r.status})`); return r.json(); };
+  const idx = await pegar('tesouro/titulos.json');
+  for (const t of idx.titulos) json(t.arquivo, await pegar(t.arquivo));
+  json('tesouro/titulos.json', idx);
+  console.log(`tesouro: CSV indisponível — ${idx.titulos.length} títulos reaproveitados do site (gerado em ${idx.gerado_em})`);
+  globalThis.__tesouro = idx.titulos.length;
+} else {
   const L = linhasCsv('PrecoTaxaTesouroDireto.csv', 'utf-8');
   const cab = L[0].split(';');
   const esperado = ['Tipo Titulo', 'Data Vencimento', 'Data Base', 'Taxa Compra Manha', 'Taxa Venda Manha', 'PU Compra Manha', 'PU Venda Manha', 'PU Base Manha'];

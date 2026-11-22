@@ -34,8 +34,11 @@ jobs:
           curl -fsSL --retry 3 --max-time 300 -o entrada/registro.zip \
             https://dados.cvm.gov.br/dados/FI/CAD/DADOS/registro_fundo_classe.zip
           unzip -o -q entrada/registro.zip registro_classe.csv -d entrada
-          curl -fsSL --retry 3 --max-time 300 -o entrada/PrecoTaxaTesouroDireto.csv \
-            "https://www.tesourotransparente.gov.br/ckan/dataset/df56aa42-484a-4a59-8184-7676580c81e3/resource/796d2059-14e9-44e3-80c9-2d9e30b405c1/download/PrecoTaxaTesouroDireto.csv"
+          # O Tesouro Transparente às vezes recusa conexão dos servidores do GitHub: sem o arquivo,
+          # o gerador reaproveita os arquivos do Tesouro já publicados (e o resto do job segue).
+          curl -fsSL --retry 3 --retry-all-errors --max-time 300 -o entrada/PrecoTaxaTesouroDireto.csv \
+            "https://www.tesourotransparente.gov.br/ckan/dataset/df56aa42-484a-4a59-8184-7676580c81e3/resource/796d2059-14e9-44e3-80c9-2d9e30b405c1/download/PrecoTaxaTesouroDireto.csv" \
+            || { echo "::warning::Tesouro Transparente fora do ar; reaproveitando os arquivos publicados"; rm -f entrada/PrecoTaxaTesouroDireto.csv; }
           ls -la entrada
 
       - name: Gerar arquivos
