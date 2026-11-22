@@ -79,5 +79,5 @@ const geradoEm = new Date().toISOString();
 json('meta.json', { gerado_em: geradoEm, fundos: globalThis.__fundos, titulos_tesouro: globalThis.__tesouro, versao: 1 });
 writeFileSync(join(saida, 'index.html'), '<!doctype html><meta charset="utf-8"><title>FLUAT dados públicos</title>' +
   '<p>Arquivos públicos usados pelo FLUAT: <a href="meta.json">meta.json</a>, <a href="fundos/indice.json">fundos/indice.json</a>, ' +
-  '<a href="tesouro/titulos.json">tesouro/titulos.json</a>. Fontes: CVM e Tesouro Transparente.</p>');
+  '<a href="tesouro/titulos.json">tesouro/titulos.json</a>, <a href="fundos/cotas/meta.json">fundos/cotas/meta.json</a>. Fontes: CVM e Tesouro Transparente.</p>');
 console.log('ok →', saida);

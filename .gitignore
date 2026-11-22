@@ -2,3 +2,4 @@ entrada/
 publicar/
 .DS_Store
 *.db
+cache/

@@ -41,6 +41,23 @@ jobs:
       - name: Gerar arquivos
         run: node scripts/gerar.mjs entrada publicar
 
+      # Cota diária dos fundos em baldes de CNPJ. Anos fechados há mais de um ano não mudam mais e
+      # ficam no cache entre execuções (a chave é o ano: na virada, o ano que fechou é gerado e guardado num cache novo).
+      - id: ano
+        run: echo "ano=$(date -u +%Y)" >> "$GITHUB_OUTPUT"
+
+      - name: Restaurar anos fechados das cotas
+        uses: actions/cache@v4
+        with:
+          path: cache/cotas
+          key: cotas-v1-${{ steps.ano.outputs.ano }}
+          restore-keys: cotas-v1-
+
+      - name: Gerar cotas dos fundos (informe diário da CVM)
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: node scripts/cotas.mjs publicar cache/cotas --desde 2021
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
